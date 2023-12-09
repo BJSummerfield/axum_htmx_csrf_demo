@@ -54,15 +54,12 @@ async fn handle_submit_username(
     session: Session,
     Form(username_struct): Form<Username>,
 ) -> impl IntoResponse {
-    println!("{:?}", session);
-
     let session_token_hash: Option<String> = session.get("authenticity_token").unwrap_or_default();
     let form_authenticity_token = username_struct.authenticity_token;
-
-    if csrf_token.verify(&form_authenticity_token).is_err() {
-        return (StatusCode::FORBIDDEN, "CSRF token verification failed").into_response();
-    }
-
+    println!(
+        "Submit handler {:?}, {:?}",
+        session_token_hash, form_authenticity_token
+    );
     if let Some(hash) = session_token_hash {
         if csrf_token.verify(&hash).is_err() {
             return (
@@ -73,12 +70,16 @@ async fn handle_submit_username(
         }
     }
 
+    if csrf_token.verify(&form_authenticity_token).is_err() {
+        return (StatusCode::FORBIDDEN, "CSRF token verification failed").into_response();
+    }
+
     session
         .remove::<String>("authenticity_token")
         .unwrap_or_default();
 
     let username = username_struct.username;
-    println!("{:?}", session);
+
     session
         .insert(USERNAME_KEY, &username)
         .expect("Could not serialize.");
@@ -144,6 +145,13 @@ fn header() -> PreEscaped<String> {
 async fn username_form_body(csrf_token: CsrfToken, session: Session) -> PreEscaped<String> {
     let authenticity_token = csrf_token.authenticity_token().unwrap();
     let _ = session.insert("authenticity_token", authenticity_token.clone());
+    if let Err(_) = csrf_token.verify(&authenticity_token) {
+        println!("token is invalid");
+    } else {
+        println!("lookikng good");
+    }
+
+    println! {"{:?} {:?}", authenticity_token, session};
 
     let markup = html! {
         h1 { "Enter Your Username" }
