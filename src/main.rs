@@ -7,6 +7,7 @@ use axum::{
     routing::{get, post},
     BoxError, Router,
 };
+use axum_csrf::{CsrfConfig, CsrfLayer, CsrfToken};
 use http::StatusCode;
 use maud::{html, PreEscaped};
 use serde::{Deserialize, Serialize};
@@ -18,11 +19,13 @@ const USERNAME_KEY: &str = "username";
 #[derive(Default, Deserialize, Serialize, Debug, Clone)]
 struct Username {
     username: String,
+    authenticity_token: String,
 }
 
 #[tokio::main]
 async fn main() {
     let session_store = MemoryStore::default();
+    let csrf_config = CsrfConfig::default();
     let session_service = ServiceBuilder::new()
         .layer(HandleErrorLayer::new(|_: BoxError| async {
             StatusCode::BAD_REQUEST
@@ -31,7 +34,8 @@ async fn main() {
             SessionManagerLayer::new(session_store)
                 .with_secure(true)
                 .with_expiry(Expiry::OnSessionEnd),
-        );
+        )
+        .layer(CsrfLayer::new(csrf_config));
 
     let app = Router::new()
         .route("/", get(handler))
@@ -46,23 +50,49 @@ async fn main() {
 }
 
 async fn handle_submit_username(
+    csrf_token: CsrfToken,
     session: Session,
     Form(username_struct): Form<Username>,
 ) -> impl IntoResponse {
+    println!("{:?}", session);
+
+    let session_token_hash: Option<String> = session.get("authenticity_token").unwrap_or_default();
+    let form_authenticity_token = username_struct.authenticity_token;
+
+    if csrf_token.verify(&form_authenticity_token).is_err() {
+        return (StatusCode::FORBIDDEN, "CSRF token verification failed").into_response();
+    }
+
+    if let Some(hash) = session_token_hash {
+        if csrf_token.verify(&hash).is_err() {
+            return (
+                StatusCode::FORBIDDEN,
+                "Modification of both Cookie/token OR a replay attack occurred",
+            )
+                .into_response();
+        }
+    }
+
+    session
+        .remove::<String>("authenticity_token")
+        .unwrap_or_default();
+
     let username = username_struct.username;
     println!("{:?}", session);
     session
         .insert(USERNAME_KEY, &username)
         .expect("Could not serialize.");
 
-    Html(username_body(&username)).into_response() // Pass the username string directly
+    Html(username_body(&username)).into_response()
 }
 
-async fn handler(session: Session) -> impl IntoResponse {
+async fn handler(csrf_token: CsrfToken, session: Session) -> impl IntoResponse {
     println!("{:?}", session);
     match session.get::<String>(USERNAME_KEY) {
         Ok(Some(username)) => render_base(&username).into_response(),
-        Ok(None) => render_base_no_username().into_response(),
+        Ok(None) => render_base_no_username(csrf_token, session)
+            .await
+            .into_response(),
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
 }
@@ -75,12 +105,12 @@ fn username_body(username: &str) -> String {
     markup.into_string()
 }
 
-fn render_base_no_username() -> Html<String> {
+async fn render_base_no_username(csrf_token: CsrfToken, session: Session) -> Html<String> {
     let markup = html! {
         (maud::DOCTYPE)
         html {
         head {(header())}
-            body {(PreEscaped(username_form_body().into_string()))}
+            body {(PreEscaped(username_form_body(csrf_token, session).await.into_string()))}
         }
     };
     Html(markup.into_string())
@@ -111,7 +141,10 @@ fn header() -> PreEscaped<String> {
     };
     PreEscaped(markup.into_string())
 }
-fn username_form_body() -> PreEscaped<String> {
+async fn username_form_body(csrf_token: CsrfToken, session: Session) -> PreEscaped<String> {
+    let authenticity_token = csrf_token.authenticity_token().unwrap();
+    let _ = session.insert("authenticity_token", authenticity_token.clone());
+
     let markup = html! {
         h1 { "Enter Your Username" }
         form
@@ -123,6 +156,11 @@ fn username_form_body() -> PreEscaped<String> {
                 name="username"
                 placeholder="Username"
                 required="true"
+            {}
+            input
+                type="hidden"
+                name="authenticity_token"
+                value=(authenticity_token)
             {}
             button
                 type="submit"
