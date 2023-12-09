@@ -1,16 +1,18 @@
-use std::net::SocketAddr;
-
 use axum::{
+    body::Body,
     error_handling::HandleErrorLayer,
-    extract::Form,
-    response::{Html, IntoResponse},
+    extract::{Form, Request},
+    http::{Method, StatusCode},
+    middleware::Next,
+    response::{Html, IntoResponse, Response},
     routing::{get, post},
     BoxError, Router,
 };
 use axum_csrf::{CsrfConfig, CsrfLayer, CsrfToken};
-use http::StatusCode;
+use http_body_util::BodyExt;
 use maud::{html, PreEscaped};
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, net::SocketAddr};
 use tower::ServiceBuilder;
 use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
 
@@ -38,8 +40,9 @@ async fn main() {
         .layer(CsrfLayer::new(csrf_config));
 
     let app = Router::new()
-        .route("/", get(handler))
         .route("/submit_username", post(handle_submit_username))
+        .layer(axum::middleware::from_fn(auth_middleware))
+        .route("/", get(handler))
         .layer(session_service);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -49,35 +52,43 @@ async fn main() {
         .unwrap();
 }
 
+pub async fn auth_middleware(
+    token: CsrfToken,
+    method: Method,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    if method == Method::POST {
+        let (parts, body) = request.into_parts();
+
+        let bytes = body
+            .collect()
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .to_bytes()
+            .to_vec();
+
+        let form_data: HashMap<String, String> = serde_urlencoded::from_bytes(&bytes)
+            .map_err(|_| -> StatusCode { StatusCode::INTERNAL_SERVER_ERROR })?;
+
+        if let Some(authenticity_token) = form_data.get("authenticity_token") {
+            if token.verify(authenticity_token).is_err() {
+                return Err(StatusCode::UNAUTHORIZED);
+            }
+        } else {
+            return Err(StatusCode::BAD_REQUEST); // Or another appropriate status code
+        }
+
+        request = Request::from_parts(parts, Body::from(bytes));
+    }
+
+    Ok(next.run(request).await)
+}
+
 async fn handle_submit_username(
-    csrf_token: CsrfToken,
     session: Session,
     Form(username_struct): Form<Username>,
 ) -> impl IntoResponse {
-    let session_token_hash: Option<String> = session.get("authenticity_token").unwrap_or_default();
-    let form_authenticity_token = username_struct.authenticity_token;
-    println!(
-        "Submit handler {:?}, {:?}",
-        session_token_hash, form_authenticity_token
-    );
-    if let Some(hash) = session_token_hash {
-        if csrf_token.verify(&hash).is_err() {
-            return (
-                StatusCode::FORBIDDEN,
-                "Modification of both Cookie/token OR a replay attack occurred",
-            )
-                .into_response();
-        }
-    }
-
-    if csrf_token.verify(&form_authenticity_token).is_err() {
-        return (StatusCode::FORBIDDEN, "CSRF token verification failed").into_response();
-    }
-
-    session
-        .remove::<String>("authenticity_token")
-        .unwrap_or_default();
-
     let username = username_struct.username;
 
     session

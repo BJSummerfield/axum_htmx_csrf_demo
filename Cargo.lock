@@ -148,9 +148,10 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum_csrf",
- "http",
+ "http-body-util",
  "maud",
  "serde",
+ "serde_urlencoded",
  "time",
  "tokio",
  "tower",
