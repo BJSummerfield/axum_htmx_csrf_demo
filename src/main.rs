@@ -90,9 +90,11 @@ async fn handle_submit_username(
 async fn handler(csrf_token: CsrfToken, session: Session) -> impl IntoResponse {
     println!("{:?}", session);
     match session.get::<String>(USERNAME_KEY) {
-        Ok(Some(username)) => render_base(&username).into_response(),
-        Ok(None) => render_base_no_username(csrf_token, session)
-            .await
+        Ok(Some(username)) => (csrf_token.clone(), render_base(&username)).into_response(),
+        Ok(None) => (
+            csrf_token.clone(),
+            render_base_no_username(csrf_token, session).await,
+        )
             .into_response(),
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
