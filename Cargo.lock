@@ -146,6 +146,7 @@ dependencies = [
 name = "axum_htmx_csrf_demo"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "axum",
  "axum_csrf",
  "http-body-util",

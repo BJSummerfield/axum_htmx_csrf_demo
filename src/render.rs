@@ -1,7 +1,7 @@
 use axum::response::Html;
 use maud::{html, PreEscaped};
 
-use crate::models::{AuthenticityToken, User};
+use crate::models::{AuthenticityToken, RequestCounter, User};
 
 pub struct Render {}
 
@@ -20,38 +20,49 @@ impl Render {
         markup.into_string()
     }
 
-    pub fn root(username: &str) -> Html<String> {
+    pub fn root(username: &str, request_counter: RequestCounter) -> Html<String> {
         let markup = html! {
             (maud::DOCTYPE)
             html {
             head {
                 (PreEscaped(Self::header()))
             }
-                body {(PreEscaped(Self::root_body(username)))}
+                body {(PreEscaped(Self::root_body(username, request_counter)))}
             }
         };
         Html(markup.into_string())
     }
 
-    pub fn root_no_username(authenticity_token: String) -> Html<String> {
+    pub fn root_no_username(
+        authenticity_token: String,
+        request_counter: RequestCounter,
+    ) -> Html<String> {
         let markup = html! {
             (maud::DOCTYPE)
             html {
             head {(PreEscaped(Self::header()))}
-                body {(PreEscaped(Self::username_form(authenticity_token)))}
+                body {(PreEscaped(Self::username_form(authenticity_token,request_counter)))}
             }
         };
         Html(markup.into_string())
     }
 
-    pub fn root_body(username: &str) -> String {
+    pub fn root_body(username: &str, request_counter: RequestCounter) -> String {
         let markup = html! {
             h1 { "Hello, " (username) "!" }
+            {(PreEscaped(Self::request_counter(request_counter)))}
         };
         markup.into_string()
     }
 
-    fn username_form(authenticity_token: String) -> String {
+    fn request_counter(request_counter: RequestCounter) -> String {
+        let markup = html! {
+            div{"Total requests made: " (request_counter.value)}
+        };
+        markup.into_string()
+    }
+
+    fn username_form(authenticity_token: String, request_counter: RequestCounter) -> String {
         let markup = html! {
             h1 { "Enter Your Username" }
             form
@@ -75,6 +86,7 @@ impl Render {
                     "Submit"
                 }
             }
+            {(PreEscaped(Self::request_counter(request_counter)))}
         };
         markup.into_string()
     }

@@ -6,6 +6,7 @@ use axum::{
 };
 use axum_csrf::{CsrfConfig, CsrfLayer};
 use std::net::SocketAddr;
+use time::Duration;
 use tower::ServiceBuilder;
 use tower_sessions::{Expiry, MemoryStore, SessionManagerLayer};
 
@@ -28,7 +29,7 @@ async fn main() {
         .layer(
             SessionManagerLayer::new(session_store)
                 .with_secure(true)
-                .with_expiry(Expiry::OnSessionEnd),
+                .with_expiry(Expiry::OnInactivity(Duration::seconds(10))),
         )
         .layer(CsrfLayer::new(csrf_config));
 
