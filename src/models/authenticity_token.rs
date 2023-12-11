@@ -1,7 +1,5 @@
 pub struct AuthenticityToken {}
 
 impl AuthenticityToken {
-    pub fn key() -> String {
-        "authenticity_token".to_owned()
-    }
+    pub const KEY: &'static str = "authenticity_token";
 }

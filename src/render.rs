@@ -60,13 +60,13 @@ impl Render {
             {
                 input
                     type="text"
-                    name=(User::key())
+                    name=(User::KEY)
                     placeholder="Username"
                     required="true"
                 {}
                 input
                     type="hidden"
-                    name=(AuthenticityToken::key())
+                    name=(AuthenticityToken::KEY)
                     value=(authenticity_token)
                 {}
                 button

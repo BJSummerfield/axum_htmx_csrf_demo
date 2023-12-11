@@ -6,7 +6,5 @@ pub struct User {
 }
 
 impl User {
-    pub fn key() -> String {
-        "username".to_string()
-    }
+    pub const KEY: &'static str = "username";
 }

@@ -16,7 +16,7 @@ impl Handle {
     ) -> impl IntoResponse {
         let username = username_struct.username;
         session
-            .insert(&User::key(), &username)
+            .insert(&User::KEY, &username)
             .expect("Could not serialize.");
         Html(Render::root_body(&username)).into_response()
     }
@@ -24,9 +24,9 @@ impl Handle {
     pub async fn root(csrf_token: CsrfToken, session: Session) -> impl IntoResponse {
         let authenticity_token = csrf_token.authenticity_token().unwrap();
         let _ = session
-            .insert(&AuthenticityToken::key(), &authenticity_token)
+            .insert(&AuthenticityToken::KEY, &authenticity_token)
             .expect("Could not serialize.");
-        match session.get::<String>(&User::key()) {
+        match session.get::<String>(&User::KEY) {
             Ok(Some(username)) => (csrf_token.clone(), Render::root(&username)).into_response(),
             Ok(None) => (
                 csrf_token.clone(),
