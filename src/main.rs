@@ -35,6 +35,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/username", post(Handle::username))
+        .route("/counter", post(Handle::counter))
         .layer(axum::middleware::from_fn(Auth::csrf_middleware))
         .route("/", get(Handle::root))
         .layer(session_service);
