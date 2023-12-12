@@ -39,9 +39,11 @@ impl Handle {
         counter: Counter,
     ) -> impl IntoResponse {
         let authenticity_token = csrf_token.authenticity_token().unwrap();
-        let _ = session
+
+        session
             .insert(&AuthenticityToken::KEY, &authenticity_token)
             .expect("Could not serialize.");
+
         match session.get::<String>(&User::KEY) {
             Ok(Some(username)) => (
                 csrf_token.clone(),
@@ -87,7 +89,7 @@ impl Handle {
             .expect("Could not deserialize.")
             .unwrap_or_default();
 
-        let _ = session
+        session
             .insert(&AuthenticityToken::KEY, &authenticity_token)
             .expect("Could not serialize.");
         // Insert the updated counter into the session

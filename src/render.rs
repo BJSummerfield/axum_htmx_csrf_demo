@@ -29,10 +29,12 @@ impl Render {
         let markup = html! {
             (maud::DOCTYPE)
             html {
-            head {
-                (PreEscaped(Self::header()))
-            }
-                body {(PreEscaped(Self::root_body(authenticity_token, username, request_counter, counter)))}
+                head {
+                    (PreEscaped(Self::header()))
+                }
+                body {
+                    (PreEscaped(Self::root_body(authenticity_token, username, request_counter, counter)))
+                }
             }
         };
         Html(markup.into_string())
@@ -45,8 +47,13 @@ impl Render {
         let markup = html! {
             (maud::DOCTYPE)
             html {
-            head {(PreEscaped(Self::header()))}
-                body {(PreEscaped(Self::username_form(authenticity_token,request_counter)))}
+                head {(PreEscaped(Self::header()))}
+                body {
+                    h1 id="banner-message" { "Enter Your Username" }
+                    div id="form"   {(PreEscaped(Self::username_form(authenticity_token)))}
+                    div id="request-counter"{(PreEscaped(Self::request_counter(request_counter)))}
+                }
+
             }
         };
         Html(markup.into_string())
@@ -59,7 +66,7 @@ impl Render {
         counter: Counter,
     ) -> String {
         let markup = html! {
-            h1 { "Hello, " (username) "!" }
+            h1 { "Hello, " (username)"!" }
             {(PreEscaped(Self::request_counter(request_counter)))}
             {(PreEscaped(Self::counter_form(authenticity_token, counter)))}
         };
@@ -68,7 +75,7 @@ impl Render {
 
     fn request_counter(request_counter: RequestCounter) -> String {
         let markup = html! {
-            div{"Total requests made: " (request_counter.value)}
+            {"Total requests made: " (request_counter.value)}
         };
         markup.into_string()
     }
@@ -83,12 +90,10 @@ impl Render {
                     type="submit"
                     name="action"
                     value=(CounterAction::Decrement)
-                {
-                    "-"  // Text for the decrement button
-                }
+                { "-" } // Text for the decrement button
 
                 span{(counter.value)}
-               input
+                input
                     type="hidden"
                     name=(AuthenticityToken::KEY)
                     value=(authenticity_token)
@@ -97,17 +102,14 @@ impl Render {
                     type="submit"
                     name="action"
                     value=(CounterAction::Increment)
-                {
-                    "+"  // Text for the increment button
-                }
+                { "+" }  // Text for the increment button
             }
         };
         markup.into_string()
     }
 
-    fn username_form(authenticity_token: String, request_counter: RequestCounter) -> String {
+    fn username_form(authenticity_token: String) -> String {
         let markup = html! {
-            h1 { "Enter Your Username" }
             form
                 hx-post="/username"
                 hx-target="body"
@@ -125,11 +127,8 @@ impl Render {
                 {}
                 button
                     type="submit"
-                {
-                    "Submit"
-                }
+                { "Submit" }
             }
-            {(PreEscaped(Self::request_counter(request_counter)))}
         };
         markup.into_string()
     }

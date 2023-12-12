@@ -30,7 +30,7 @@ impl FromStr for CounterAction {
         }
     }
 }
-// Define the CounterAction enum
+
 #[derive(Deserialize, Serialize, Debug)]
 pub enum CounterAction {
     Increment,
