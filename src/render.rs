@@ -33,7 +33,9 @@ impl Render {
                     (PreEscaped(Self::header()))
                 }
                 body {
-                    (PreEscaped(Self::root_body(authenticity_token, username, request_counter, counter)))
+                    h1 id="banner-message" { "Hello, " (username)"!" }
+                    (PreEscaped(Self::request_counter(request_counter)))
+                    (PreEscaped(Self::counter_form(authenticity_token, counter)))
                 }
             }
         };
@@ -50,8 +52,8 @@ impl Render {
                 head {(PreEscaped(Self::header()))}
                 body {
                     h1 id="banner-message" { "Enter Your Username" }
-                    div id="form"   {(PreEscaped(Self::username_form(authenticity_token)))}
-                    div id="request-counter"{(PreEscaped(Self::request_counter(request_counter)))}
+                    (PreEscaped(Self::request_counter(request_counter)))
+                    (PreEscaped(Self::username_form(authenticity_token)))
                 }
 
             }
@@ -66,16 +68,16 @@ impl Render {
         counter: Counter,
     ) -> String {
         let markup = html! {
-            h1 { "Hello, " (username)"!" }
-            {(PreEscaped(Self::request_counter(request_counter)))}
-            {(PreEscaped(Self::counter_form(authenticity_token, counter)))}
+            h1 id="banner-message" { "Hello, " (username)"!" }
+            (PreEscaped(Self::request_counter(request_counter)))
+            (PreEscaped(Self::counter_form(authenticity_token, counter)))
         };
         markup.into_string()
     }
 
     fn request_counter(request_counter: RequestCounter) -> String {
         let markup = html! {
-            {"Total requests made: " (request_counter.value)}
+            div id="request-counter" {"Total requests made: " (request_counter.value)}
         };
         markup.into_string()
     }
@@ -83,6 +85,7 @@ impl Render {
     fn counter_form(authenticity_token: String, counter: Counter) -> String {
         let markup = html! {
             form
+            id="form"
             hx-post="/counter"
             hx-target="body"
             {
@@ -111,6 +114,7 @@ impl Render {
     fn username_form(authenticity_token: String) -> String {
         let markup = html! {
             form
+                id="form"
                 hx-post="/username"
                 hx-target="body"
             {
@@ -127,7 +131,9 @@ impl Render {
                 {}
                 button
                     type="submit"
-                { "Submit" }
+                {
+                    "Submit"
+                }
             }
         };
         markup.into_string()
